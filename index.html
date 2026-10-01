@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Road Accident Risk Prediction Dashboard</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f4f7fb;color:#172033}
+header{background:#172b4d;color:white;padding:22px 30px}header h1{margin:0 0 6px}header p{margin:0;opacity:.85}
+.layout{display:grid;grid-template-columns:280px 1fr;min-height:calc(100vh - 90px)}
+aside{background:#fff;padding:22px;border-right:1px solid #dce2eb}aside h2{margin-top:0;font-size:20px}
+label{display:block;margin-top:14px;font-weight:bold;font-size:14px}.value{float:right;font-weight:normal}
+input[type=range],input[type=number],select{width:100%;margin-top:5px}input[type=number],select{padding:8px;border:1px solid #cbd3df;border-radius:6px}
+main{padding:25px}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:15px}.card,.section{background:white;border-radius:12px;box-shadow:0 2px 10px #0000000d}
+.card{padding:18px}.title{color:#68758a;font-size:13px}.valuebig{font-size:25px;font-weight:bold;margin-top:7px}
+.section{margin-top:20px;padding:20px}.risk{padding:15px;border-radius:8px;font-weight:bold}.high{background:#ffe1e1;color:#b42318}.medium{background:#fff0c2;color:#8a5a00}.low{background:#dff7e6;color:#087443}
+table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px solid #e3e7ee;text-align:left}th{background:#f4f6f9}
+.chart{height:250px;display:flex;align-items:end;gap:15px;padding:15px 10px 35px;border-left:1px solid #ccd4df;border-bottom:1px solid #ccd4df}
+.barwrap{height:100%;flex:1;display:flex;flex-direction:column;justify-content:end;align-items:center}.bar{width:65%;max-width:80px;background:#3973c8;border-radius:6px 6px 0 0;min-height:2px}.barlabel{font-size:12px;text-align:center;margin-top:8px}
+.map{height:350px;position:relative;overflow:hidden;border-radius:10px;background:linear-gradient(30deg,transparent 47%,#d6dce5 48%,#d6dce5 51%,transparent 52%),linear-gradient(150deg,transparent 47%,#d6dce5 48%,#d6dce5 51%,transparent 52%),#e9f0e5;background-size:140px 140px}
+.marker{position:absolute;width:25px;height:25px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 2px 8px #0005}.marker span{display:block;width:9px;height:9px;margin:8px;border-radius:50%;background:white}
+.legend{position:absolute;right:15px;top:15px;background:white;padding:10px;border-radius:8px;z-index:2;box-shadow:0 2px 8px #0003;font-size:13px}
+.arch{white-space:pre-wrap;background:#101827;color:#d7e2f3;padding:18px;border-radius:8px;font-family:Consolas,monospace}
+@media(max-width:900px){.layout{grid-template-columns:1fr}.cards{grid-template-columns:repeat(2,1fr)}aside{border-right:0;border-bottom:1px solid #dce2eb}}
+@media(max-width:550px){.cards{grid-template-columns:1fr}main{padding:15px}}
+</style>
+</head>
+<body>
+<header><h1>🚦 Road Accident Risk Prediction System</h1><p>IoT + Machine Learning based Road Accident Risk Monitoring Dashboard</p></header>
+<div class="layout">
+<aside>
+<h2>Road & Sensor Inputs</h2>
+<label>Latitude</label><input id="lat" type="number" value="28.6139" step="0.0001">
+<label>Longitude</label><input id="lon" type="number" value="77.2090" step="0.0001">
+<label>Vehicle Speed <span class="value" id="speedV">50 km/h</span></label><input id="speed" type="range" min="0" max="120" value="50">
+<label>Traffic Density <span class="value" id="trafficV">50%</span></label><input id="traffic" type="range" min="0" max="100" value="50">
+<label>Rainfall <span class="value" id="rainV">20%</span></label><input id="rain" type="range" min="0" max="100" value="20">
+<label>Lighting <span class="value" id="lightV">70%</span></label><input id="light" type="range" min="0" max="100" value="70">
+<label>Visibility <span class="value" id="visV">7.0 km</span></label><input id="vis" type="range" min="0.1" max="10" step="0.1" value="7">
+<label>Road Condition</label><select id="road"><option value="0">Dry</option><option value="15">Wet</option><option value="30">Poor</option></select>
+</aside>
+<main>
+<div class="cards">
+<div class="card"><div class="title">Accident Risk</div><div class="valuebig" id="risk">0%</div></div>
+<div class="card"><div class="title">Risk Level</div><div class="valuebig" id="level">LOW</div></div>
+<div class="card"><div class="title">Traffic</div><div class="valuebig" id="trafficC">50%</div></div>
+<div class="card"><div class="title">Rainfall</div><div class="valuebig" id="rainC">20%</div></div>
+</div>
+<div class="cards" style="margin-top:15px">
+<div class="card"><div class="title">Speed</div><div class="valuebig" id="speedC">50 km/h</div></div>
+<div class="card"><div class="title">Lighting</div><div class="valuebig" id="lightC">70%</div></div>
+<div class="card"><div class="title">Visibility</div><div class="valuebig" id="visC">7.0 km</div></div>
+<div class="card"><div class="title">Road</div><div class="valuebig" id="roadC">Dry</div></div>
+</div>
+<div class="section"><h2>🚨 Accident Risk Assessment</h2><div id="warning" class="risk low">🟢 LOW RISK</div></div>
+<div class="section"><h2>📋 Current Sensor Data</h2><table><thead><tr><th>Parameter</th><th>Value</th></tr></thead><tbody id="table"></tbody></table></div>
+<div class="section"><h2>📈 Input Parameters</h2><div id="chart" class="chart"></div></div>
+<div class="section"><h2>🗺️ Accident Risk Location</h2><div class="map"><div class="legend">🔴 High<br>🟠 Medium<br>🟢 Low</div><div id="marker" class="marker"><span></span></div></div><p><b>Location:</b> <span id="location">28.6139, 77.2090</span></p></div>
+<div class="section"><h2>🔗 System Architecture</h2><div class="arch">ESP32
+  │
+  ├── Traffic Sensor
+  ├── Rain Sensor
+  ├── LDR
+  ├── Latitude
+  └── Longitude
+        │
+        ▼
+    REST API
+        │
+        ▼
+   Data Processing
+        │
+        ▼
+     XGBoost
+        │
+        ▼
+ Accident Risk
+        │
+        ├───────────────┐
+        ▼               ▼
+    Streamlit       GeoPandas
+    Dashboard       Risk Map</div></div>
+</main>
+</div>
+<script>
+function update(){
+ const lat=+document.getElementById('lat').value||0,lon=+document.getElementById('lon').value||0;
+ const speed=+document.getElementById('speed').value,traffic=+document.getElementById('traffic').value;
+ const rain=+document.getElementById('rain').value,light=+document.getElementById('light').value;
+ const vis=+document.getElementById('vis').value,road=+document.getElementById('road').value;
+ const roadName=road===0?'Dry':road===15?'Wet':'Poor';
+ const risk=Math.max(0,Math.min(100,(speed/120)*20+traffic*.25+rain*.20+(100-light)*.15+((10-vis)/10)*10+road));
+ let level='LOW',cls='low',icon='🟢'; if(risk>=70){level='HIGH';cls='high';icon='🔴'}else if(risk>=40){level='MEDIUM';cls='medium';icon='🟡'}
+ document.getElementById('speedV').textContent=speed+' km/h';document.getElementById('trafficV').textContent=traffic+'%';document.getElementById('rainV').textContent=rain+'%';document.getElementById('lightV').textContent=light+'%';document.getElementById('visV').textContent=vis.toFixed(1)+' km';
+ document.getElementById('risk').textContent=risk.toFixed(1)+'%';document.getElementById('level').textContent=level;document.getElementById('trafficC').textContent=traffic+'%';document.getElementById('rainC').textContent=rain+'%';document.getElementById('speedC').textContent=speed+' km/h';document.getElementById('lightC').textContent=light+'%';document.getElementById('visC').textContent=vis.toFixed(1)+' km';document.getElementById('roadC').textContent=roadName;
+ const w=document.getElementById('warning');w.className='risk '+cls;w.textContent=icon+' '+level+' RISK — Accident Risk Score: '+risk.toFixed(1)+'%';
+ document.getElementById('location').textContent=lat.toFixed(4)+', '+lon.toFixed(4);
+ document.getElementById('table').innerHTML=[['Latitude',lat.toFixed(4)],['Longitude',lon.toFixed(4)],['Speed',speed+' km/h'],['Traffic',traffic+'%'],['Rainfall',rain+'%'],['Lighting',light+'%'],['Visibility',vis.toFixed(1)+' km'],['Road Condition',roadName]].map(x=>'<tr><td>'+x[0]+'</td><td>'+x[1]+'</td></tr>').join('');
+ const vals=[speed/120*100,traffic,rain,light,vis/10*100],names=['Speed','Traffic','Rainfall','Lighting','Visibility'];
+ document.getElementById('chart').innerHTML=vals.map((x,i)=>'<div class="barwrap"><div class="bar" style="height:'+Math.max(2,x*2)+'px"></div><div class="barlabel">'+names[i]+'<br>'+x.toFixed(0)+'%</div></div>').join('');
+ const marker=document.getElementById('marker');marker.style.background=level==='HIGH'?'#dc2626':level==='MEDIUM'?'#f59e0b':'#16a34a';
+ marker.style.left=(10+(Math.abs(lon)%1)*75)+'%';marker.style.top=(15+(Math.abs(lat)%1)*65)+'%';
+}
+document.querySelectorAll('input,select').forEach(e=>{e.addEventListener('input',update);e.addEventListener('change',update)});update();
+</script>
+</body>
+</html>
